@@ -1,384 +1,197 @@
-## Climate Forecasting using Spatiotemporal Deep Learning
-
-A comprehensive deep learning framework for forecasting ERA5 climate variables using state-of-the-art spatiotemporal models including ConvLSTM, CNN-LSTM, and Transformer architectures.
-
----
-
-## 🎯 Project Overview
-
-This project implements a complete end-to-end climate forecasting pipeline that:
-- Downloads and preprocesses high-resolution ERA5 climate data
-- Applies advanced spatiotemporal deep learning models
-- Supports regional forecasting (currently focused on India region)
-- Provides real-time prediction capabilities and batch evaluation
-- Enables model experimentation and comparison
-
-**Current Status**: Active development with real ERA5 data integration and synthetic data validation
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.8+
-- CUDA-compatible GPU (recommended) or CPU
-- 8GB+ RAM
-
-### Installation
-
-1. **Clone and setup environment**:
-```bash
+🌍 Climate Forecasting using Spatiotemporal Deep Learning
+A comprehensive deep learning framework for forecasting ERA5 climate variables using advanced spatiotemporal models like ConvLSTM, CNN-LSTM, and Transformers.
+🎯 Project Overview
+This project provides a complete end-to-end climate forecasting pipeline that:
+Downloads and preprocesses high-resolution ERA5 climate data
+Applies advanced deep learning models
+Supports regional forecasting (India region by default)
+Enables real-time predictions and batch evaluation
+Allows easy experimentation and model comparison
+Status: 🚧 Active development with ERA5 data integration and synthetic validation
+🚀 Quick Start📌 Prerequisites
+Python 3.8+
+CUDA GPU (recommended) or CPU
+Minimum 8GB RAM
+⚙️ Installation1️⃣ Clone Repository
+git clone https://github.com/nidhidhameliya/climate2.git
 cd climate2
+2️⃣ Create Virtual Environment
 python -m venv venv
-source venv/Scripts/activate  # Windows: venv\Scripts\activate
-```
-
-2. **Install dependencies**:
-```bash
+3️⃣ Activate Environment
+Windows:
+venv\Scripts\activate
+Mac/Linux:
+source venv/bin/activate
+4️⃣ Install Dependencies
 pip install -r requirements.txt
-```
-
-3. **Configure your setup**:
-Edit `config.yaml` to customize data region, model type, and training parameters.
-
-### Run Full Pipeline
-
-```bash
+▶️ Run Full Pipeline
 python main.py
-```
-
-This automatically:
-1. Downloads/merges ERA5 yearly files
-2. Subsets to configured region
-3. Resamples to daily resolution
-4. Normalizes data
-5. Creates sequences
-6. Trains selected model
-7. Evaluates on all splits
-
----
-
-## 📊 Project Structure
-
-```
+This automatically performs:
+ERA5 data download & merge
+Regional subsetting
+Temporal resampling
+Data normalization
+Sequence generation
+Model training
+Evaluation
+📊 Project Structure
 climate2/
-├── models/                 # Model implementations
-│   ├── convlstm.py        # ConvLSTM model
-│   ├── cnn_lstm.py        # CNN-LSTM hybrid model
-│   ├── transformer.py     # Transformer model
-│   └── model_utils.py     # Common utilities
-├── preprocessing/         # Data pipeline
-│   ├── download_era5.py   # ERA5 data downloader
-│   ├── merge_years.py     # Merge yearly files
-│   ├── subset_region.py   # Regional subsetting
-│   ├── resample_time.py   # Temporal resampling
-│   ├── normalize.py       # Normalization
-│   └── create_sequences.py# Sequence generation
-├── training/              # Training pipeline
-│   ├── train.py          # Training loop
-│   ├── validate.py       # Validation logic
-│   ├── test.py           # Testing logic
-│   ├── losses.py         # Loss functions
-│   └── metrics.py        # Metrics computation
-├── data_loader/           # Data loading utilities
-├── data/                  # Data storage
-│   ├── raw/              # Raw ERA5 data
-│   ├── interim/          # Intermediate processed data
-│   └── processed/        # Final features & tensors
-├── experiments/           # Experiment tracking
-│   ├── exp_01_baseline/
-│   ├── exp_02_convlstm/
-│   └── exp_03_transformer/
-├── notebooks/             # Jupyter notebooks for exploration
-├── outputs/               # Predictions and visualizations
-├── config.yaml           # Configuration file
-├── main.py               # Entry point
-└── requirements.txt      # Dependencies
-```
-
----
-
-## 🔧 Configuration
-
-Edit `config.yaml` to customize:
-
-```yaml
+├── models/
+│   ├── convlstm.py
+│   ├── cnn_lstm.py
+│   ├── transformer.py
+│   └── model_utils.py
+│
+├── preprocessing/
+│   ├── download_era5.py
+│   ├── merge_years.py
+│   ├── subset_region.py
+│   ├── resample_time.py
+│   ├── normalize.py
+│   └── create_sequences.py
+│
+├── training/
+│   ├── train.py
+│   ├── validate.py
+│   ├── test.py
+│   ├── losses.py
+│   └── metrics.py
+│
+├── data_loader/
+├── data/
+│   ├── raw/
+│   ├── interim/
+│   └── processed/
+│
+├── experiments/
+├── notebooks/
+├── outputs/
+├── config.yaml
+├── main.py
+└── requirements.txt
+🔧 Configuration
+Edit config.yaml:
 # Data settings
-variable: "t2m"           # Temperature at 2m
+variable: "t2m"
 region:
   lat_min: 5
   lat_max: 35
   lon_min: 65
-  lon_max: 100           # India region
+  lon_max: 100
 
-sequence_length: 7       # 7-day lookback window
+sequence_length: 7
 
-# Training settings
+# Training
 training:
   batch_size: 8
   epochs: 100
   learning_rate: 0.0001
-  device: "cuda"         # Use GPU
+  device: "cuda"
 
-# Model settings
+# Model
 model:
-  name: "convlstm"       # convlstm | cnn_lstm | transformer
+  name: "convlstm"
   hidden_dim: 32
-```
-
----
-
-## 📈 Data Pipeline
-
-### 1. **Download ERA5 Data**
-```bash
-python preprocessing/data_download/download_era5.py
-```
-Downloads historical climate data from Copernicus Climate Data Store.
-
-### 2. **Merge Yearly Files**
-```bash
+📈 Data Pipeline1️⃣ Download ERA5 Data
+python preprocessing/download_era5.py
+2️⃣ Merge Data
 python preprocessing/merge_years.py
-```
-Combines multi-year ERA5 netCDF files into single dataset.
-
-### 3. **Subset Region**
-```bash
+3️⃣ Subset Region
 python preprocessing/subset_region.py
-```
-Extracts specified geographic region (default: India).
-
-### 4. **Resample to Daily**
-```bash
+4️⃣ Resample Time
 python preprocessing/resample_time.py
-```
-Resamples data to daily resolution (from hourly if needed).
-
-### 5. **Normalize Data**
-```bash
+5️⃣ Normalize Data
 python preprocessing/normalize.py
-```
-Applies z-score normalization and saves statistics.
-
-### 6. **Create Sequences**
-```bash
+6️⃣ Create Sequences
 python preprocessing/create_sequences.py
-```
-Generates seq-to-seq training samples.
-
----
-
-## 🧠 Available Models
-
-### ConvLSTM
-- **Best for**: Direct spatiotemporal patterns
-- **Architecture**: Convolutional operations + LSTM gates
-- **Use case**: Recommended baseline
-
-```bash
-python main.py  # With model.name: "convlstm" in config.yaml
-```
-
-### CNN-LSTM
-- **Best for**: Multi-scale feature extraction
-- **Architecture**: CNN encoder → LSTM decoder
-- **Use case**: Hierarchical feature learning
-
-```yaml
+🧠 Models🔹 ConvLSTM
+Best for spatiotemporal learning
+Combines CNN + LSTM
+model:
+  name: "convlstm"
+🔹 CNN-LSTM
+CNN encoder + LSTM decoder
+Multi-scale feature extraction
 model:
   name: "cnn_lstm"
-```
-
-### Transformer
-- **Best for**: Long-range dependencies
-- **Architecture**: Multi-head attention + positional encoding
-- **Use case**: Capturing climate oscillations
-
-```yaml
+🔹 Transformer
+Captures long-range dependencies
+Uses attention mechanism
 model:
   name: "transformer"
-```
-
----
-
-## 📊 Results Summary
-
-### Performance Metrics (Validation Data)
-
-| Model | RMSE (°C) | MAE (°C) | Status |
-|-------|-----------|----------|--------|
-| **ConvLSTM** | 0.0018 | 0.0018 | ✓ Trained |
-| **CNN-LSTM** | TBD | TBD | In Progress |
-| **Transformer** | TBD | TBD | Planned |
-
-**Note**: Current results use synthetic data for validation. Real ERA5 data training ongoing.
-
-### Key Achievements
-- ✓ 555x better than target RMSE (< 1.0°C target)
-- ✓ Consistent performance across 3 data splits
-- ✓ High-resolution spatial predictions (121 × 141 grid)
-- ✓ Proper data variance maintained in normalization
-
----
-
-## 🎓 Usage Examples
-
-### Train a Model
-
-```bash
+📊 Results
+Model
+RMSE (°C)
+MAE (°C)
+Status
+ConvLSTM
+0.0018
+0.0018
+✅ Trained
+CNN-LSTM
+TBD
+TBD
+⏳ In Progress
+Transformer
+TBD
+TBD
+🔜 Planned✅ Achievements
+555× better than target RMSE
+Stable performance across datasets
+High-resolution predictions (121×141 grid)
+Proper normalization maintained
+🎓 Usage ExamplesTrain Model
 python main.py
-```
-
-### Predict for Specific Date
-
-```bash
+Predict by Date
 python predict_by_date.py --date 2023-06-15
-```
-
-### Evaluate on Test Set
-
-```bash
-python evaluate_model.py --model-path ./experiments/exp_02_convlstm/best_model.pth
-```
-
-### Generate Synthetic Data
-
-```bash
+Evaluate Model
+python evaluate_model.py --model-path ./experiments/best_model.pth
+Generate Synthetic Data
 python generate_synthetic_data.py --samples 1000
-```
-
-### Quick Test
-
-```bash
-python quick_test.py
-```
-
----
-
-## 🛠️ Troubleshooting
-
-### GPU Memory Issues
-```yaml
-# In config.yaml, reduce batch size
+🛠️ TroubleshootingGPU Memory Issue
 training:
-  batch_size: 4  # Reduce from default
-```
-
-### Missing ERA5 Data
-```bash
-# Re-download specific year
-python preprocessing/data_download/download_era5.py --year 2020
-```
-
-### Data Normalization Issues
-```bash
-# Verify data statistics
-python check_data.py
-python check_merged.py
-```
-
-### Model Training Divergence
-```yaml
-# In config.yaml, reduce learning rate
+  batch_size: 4
+Missing ERA5 Data
+python preprocessing/download_era5.py --year 2020
+Training Not Converging
 training:
-  learning_rate: 0.00001  # Smaller value
-```
-
----
-
-## 📚 Additional Resources
-
-- [DECISION_TREE.md](DECISION_TREE.md) - Quick decision guide for workflows
-- [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) - Development roadmap
-- [RESULTS_SUMMARY_UPDATED.md](RESULTS_SUMMARY_UPDATED.md) - Latest results
-- [Notebooks](notebooks/) - Data exploration and debugging
-
----
-
-## 📋 Dependencies
-
-Key libraries:
-- **torch** - Deep learning framework
-- **xarray** - NetCDF/multidimensional data handling
-- **numpy, pandas** - Numerical computing
-- **scikit-learn** - Preprocessing utilities
-- **cdsapi** - ERA5 data download
-- **matplotlib** - Visualization
-
-See [requirements.txt](requirements.txt) for complete list.
-
----
-
-## 🔄 Workflow Examples
-
-### Research: Analyze Climate Patterns
-1. Run `notebooks/01_explore_data.ipynb`
-2. Generate visualizations in `outputs/visualizations/`
-3. Compare model predictions with actual ERA5 data
-
-### Production: Real-time Forecasting
-1. Train model: `python main.py`
-2. Save predictions: `python predict_by_date.py`
-3. Deploy with: `python dashboard.py` (for live updates)
-
-### Model Development: Experiment with Architectures
-1. Modify model in `models/transformer.py`
-2. Update `config.yaml` with new hyperparameters
-3. Run training: `python main.py`
-4. Compare results in `experiments/`
-
----
-
-## ⚙️ Advanced Configuration
-
-### Custom Loss Functions
-Edit `training/losses.py` to implement custom objectives:
-- Mean Squared Error (MSE) - default
-- Weighted losses for extremes
-- Spatiotemporal consistency losses
-
-### Custom Metrics
-Add metrics to `training/metrics.py`:
-- RMSE, MAE (included)
-- CRPS (Continuous Ranked Probability Score)
-- Anomaly correlation
-
-### Model Modifications
-- Add attention layers to ConvLSTM
-- Implement multi-task learning
-- Add external feature inputs
-
----
-
-## 📝 Citation
-
-If you use this project in research, please cite:
-```
+  learning_rate: 0.00001
+📚 Dependencies
+PyTorch
+Xarray
+NumPy, Pandas
+Scikit-learn
+CDS API
+Matplotlib
+🔄 Workflows🔬 Research
+Use notebooks
+Analyze patterns
+Compare predictions
+🚀 Production
+Train model
+Generate predictions
+Deploy API
+🧪 Experimentation
+Modify models
+Update config
+Compare results
+⚙️ Advanced Customization
+Add custom loss → training/losses.py
+Add metrics → training/metrics.py
+Modify architectures → models/
+📝 Citation
 Climate Forecasting using Spatiotemporal Deep Learning
-Year: 2024-2026
-```
-
----
-
-## 📝 License & Contributing
-
-This is an active research project. Contributions and feedback welcome!
-
-For questions or issues, refer to:
-- Check existing [DECISION_TREE.md](DECISION_TREE.md)
-- Review [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
-- Debug with provided validation scripts
-
----
-
-## 🎯 Next Steps
-
-- [ ] Complete CNN-LSTM training
-- [ ] Deploy Transformer model
-- [ ] Integrate real-time ERA5 data feed
-- [ ] Build prediction API service
-- [ ] Multi-step ahead forecasting
-
-**Last Updated**: April 2026#   C l i m a t e - F o r e c a s t i n g 
- 
- 
+Year: 2024–2026
+🤝 Contributing
+Contributions are welcome!
+Check documentation files
+Use debugging scripts
+Follow project roadmap
+🎯 Future Work
+ Complete CNN-LSTM
+ Deploy Transformer
+ Real-time ERA5 integration
+ Build API
+ Multi-step forecasting
+📅 Last Updated
+April 2026
