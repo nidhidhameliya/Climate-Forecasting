@@ -18,7 +18,7 @@ This project provides a complete **end-to-end climate forecasting pipeline** tha
 
 ---
 
-## 🖼️ Demo Preview  
+## 🖼️ Project Preview  
 
 ### 📌 Application Screenshot  
 
