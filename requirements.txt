@@ -1,0 +1,14 @@
+# requirements
+xarray
+netcdf4
+numpy
+pandas
+torch
+scikit-learn
+tqdm
+pyyaml
+matplotlib
+cdsapi
+xarray
+netCDF4
+requests

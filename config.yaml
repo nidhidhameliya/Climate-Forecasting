@@ -1,0 +1,37 @@
+# =========================
+# DATA SETTINGS
+# =========================
+
+variable: "t2m"
+
+region:
+  lat_min: 5
+  lat_max: 35
+  lon_min: 65
+  lon_max: 100
+
+sequence_length: 7
+
+data:
+  train_ratio: 0.7
+  val_ratio: 0.15
+
+
+# =========================
+# TRAINING SETTINGS
+# =========================
+
+training:
+  batch_size: 8
+  epochs: 100
+  learning_rate: 0.0001
+  device: "cuda"     # change to "cpu" if needed
+
+
+# =========================
+# MODEL SETTINGS
+# =========================
+
+model:
+  name: "convlstm"        # convlstm | cnn_lstm | transformer
+  hidden_dim: 32          # used inside model classes
