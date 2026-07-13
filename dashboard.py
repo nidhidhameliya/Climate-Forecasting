@@ -28,6 +28,7 @@ INDIA_REGION_BOUNDS = {
     "lon_min": 65.0,
     "lon_max": 100.0,
 }
+MAX_DASHBOARD_FORECAST_DAYS = 10
 WMO_WEATHER_CODES = {
     0: "Clear sky",
     1: "Mainly clear",
