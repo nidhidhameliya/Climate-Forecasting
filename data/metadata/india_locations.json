@@ -1,0 +1,60 @@
+{
+  "country": "India",
+  "states": {
+    "Maharashtra": {
+      "cities": [
+        {
+          "name": "Mumbai",
+          "latitude": 19.0760,
+          "longitude": 72.8777
+        },
+        {
+          "name": "Pune",
+          "latitude": 18.5204,
+          "longitude": 73.8567
+        }
+      ]
+    },
+    "Delhi": {
+      "cities": [
+        {
+          "name": "New Delhi",
+          "latitude": 28.6139,
+          "longitude": 77.2090
+        }
+      ]
+    },
+    "Karnataka": {
+      "cities": [
+        {
+          "name": "Bengaluru",
+          "latitude": 12.9716,
+          "longitude": 77.5946
+        }
+      ]
+    },
+    "Tamil Nadu": {
+        "cities": [
+            {
+                "name": "Chennai",
+                "latitude": 13.0827,
+                "longitude": 80.2707
+            }
+        ]
+    },
+    "Himachal Pradesh": {
+      "cities": [
+        {
+          "name": "Shimla",
+          "latitude": 31.1048,
+          "longitude": 77.1734
+        },
+        {
+          "name": "Dalhousie",
+          "latitude": 32.53,
+          "longitude": 75.98
+        }
+      ]
+    }
+  }
+}

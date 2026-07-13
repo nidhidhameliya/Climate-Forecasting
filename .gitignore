@@ -4,6 +4,27 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 *.env
-data/
+
+# Ignore raw ERA5 files
 *.nc
+
+# Ignore generated NumPy files by default
 *.npy
+
+# Ignore the data directory by default
+data/*
+
+# Keep required deployment files
+!data/metadata/
+!data/metadata/india_locations.json
+
+!data/processed/
+!data/processed/mean_std.json
+
+!data/processed/tensors/
+!data/processed/tensors/test_X.npy
+!data/processed/tensors/test_y.npy
+!data/processed/tensors/train_X.npy
+!data/processed/tensors/train_y.npy
+!data/processed/tensors/val_X.npy
+!data/processed/tensors/val_y.npy
