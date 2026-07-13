@@ -1184,6 +1184,16 @@ def display_future_prediction_tab(split):
     st.caption("Predict temperatures for future dates using auto-regressive forecasting. "
                "Each prediction uses the previous 7 days to forecast the next day.")
     
+    # Deployment-safe check for required data files.
+    required_file = "data/processed/test.npy"
+    if not os.path.exists(required_file):
+        st.warning(
+            "**Future Forecast is unavailable.**\n\n"
+            "This feature requires processed data files (`data/processed/*.npy`) that are not included "
+            "in the deployed version of this application due to their size."
+        )
+        return
+
     model, config, _, _ = load_prediction_artifacts()
     
     if model is None:

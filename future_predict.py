@@ -87,18 +87,26 @@ def load_tensor_data(split="test"):
 
 def get_last_sequence(config: Dict[str, Any]) -> np.ndarray:
     """
-    Retrieves the last sequence of data needed to start auto-regressive forecasting.
-    It tries to load from test, then validation, then train splits as a fallback.
+    Retrieves the last sequence of data needed for auto-regressive forecasting.
+
+    This function is deployment-safe. It attempts to load the lightweight
+    'test.npy' file, which contains the normalized data for the test split,
+    and extracts the last sequence from it. This avoids depending on the
+    large, pre-sequenced tensor files that are not in the repository.
     """
     sequence_length = config.get("sequence_length", 7)
+    # Use the non-sequenced, normalized data as it's more likely to be available.
+    lightweight_data_path = "data/processed/test.npy"
 
-    for split in ["test", "val", "train"]:
-        _, y_data = load_tensor_data(split)
-        if y_data is not None and len(y_data) >= sequence_length:
-            return y_data[-sequence_length:].copy()
+    if os.path.exists(lightweight_data_path):
+        data = np.load(lightweight_data_path)
+        if len(data) >= sequence_length:
+            # Return the last sequence, adding the channel dimension.
+            return data[-sequence_length:][:, np.newaxis, :, :]
 
     raise FileNotFoundError(
-        "Could not find any valid data sequence files (e.g., 'test_y.npy') to start future predictions."
+        "Could not find a valid data file (e.g., 'data/processed/test.npy') "
+        "to start future predictions."
     )
 
 
@@ -109,12 +117,14 @@ def get_climatology_for_day(
     matched_grids = []
 
     for split in ["train", "val", "test"]:
-        _, y_data = load_tensor_data(split)
-        if y_data is None:
+        # Use the lightweight normalized data files instead of large tensors.
+        data_path = f"data/processed/{split}.npy"
+        if not os.path.exists(data_path):
             continue
 
+        data = np.load(data_path)
         sample_dates = get_target_dates_for_split(
-            split, len(y_data), sequence_length=sequence_length
+            split, len(data) - sequence_length, sequence_length=sequence_length
         )
         matched_indices = [
             idx
@@ -122,9 +132,10 @@ def get_climatology_for_day(
             if circular_day_distance(sample_date.timetuple().tm_yday, target_day_of_year)
             <= window_days
         ]
-
         if matched_indices:
-            matched_grids.append(y_data[matched_indices, 0])
+            # Get the target slice (the day after the sequence)
+            target_indices = [i + sequence_length for i in matched_indices]
+            matched_grids.append(data[target_indices])
 
     if not matched_grids:
         raise ValueError("No climatology samples found for the requested day.")
@@ -136,9 +147,11 @@ def get_recent_anomaly_grid(
     split: str = "test", sequence_length: int = 7, climatology_window_days: int = 10
 ) -> np.ndarray:
     """Estimate the recent anomaly relative to climatology in normalized space."""
-    _, y_data = load_tensor_data(split)
-    if y_data is None:
-        raise ValueError(f"Tensor data for split '{split}' could not be loaded.")
+    data_path = f"data/processed/{split}.npy"
+    if not os.path.exists(data_path):
+        raise ValueError(f"Data file for split '{split}' could not be loaded.")
+
+    data = np.load(data_path)
 
     _, end_date = get_date_ranges_for_split(split)
     baseline_grid = get_climatology_for_day(
@@ -146,7 +159,7 @@ def get_recent_anomaly_grid(
         sequence_length=sequence_length,
         window_days=climatology_window_days,
     )
-    recent_mean_grid = y_data[-min(sequence_length, len(y_data)) :, 0].mean(axis=0)
+    recent_mean_grid = data[-min(sequence_length, len(data)) :].mean(axis=0)
     return recent_mean_grid - baseline_grid
 
 
@@ -171,11 +184,8 @@ def predict_future_days(
     # Get the last sequence from the most recent available data split
     sequence = get_last_sequence(config)
 
-    # Determine start date
-    _, end_date = get_date_ranges_for_split(split)
-
     predictions_by_date = {}
-    current_date = end_date
+    _, current_date = get_date_ranges_for_split(split)
 
     print(
         f"Starting auto-regressive prediction from {current_date.strftime('%Y-%m-%d')}"
