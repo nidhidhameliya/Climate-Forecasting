@@ -1,0 +1,31 @@
+{
+  "split": "train",
+  "num_samples": 1089,
+  "spatial_shape": [
+    121,
+    141
+  ],
+  "metrics": {
+    "rmse_normalized": 0.24246276915073395,
+    "mae_normalized": 0.20798315107822418,
+    "rmse_kelvin": 1.8886116743087769,
+    "mae_kelvin": 1.620042324066162,
+    "rmse_celsius": 1.8886116743087769,
+    "mae_celsius": 1.620042324066162,
+    "correlation": 0.9715284520053465
+  },
+  "spatial_metrics": {
+    "spatial_rmse_min": 1.60767662525177,
+    "spatial_rmse_mean": 1.8872101306915283,
+    "spatial_rmse_max": 5.3691887855529785,
+    "spatial_rmse_std": 0.07275811582803726
+  },
+  "value_ranges": {
+    "pred_min": 4.900848388671875,
+    "pred_max": 41.207733154296875,
+    "target_min": 4.900848388671875,
+    "target_max": 41.815948486328125,
+    "pred_mean": 23.357908248901367,
+    "target_mean": 23.329193115234375
+  }
+}

@@ -1,0 +1,1 @@
+web: bash -lc "python -m pip install --upgrade pip && python -m pip install -r requirements.txt && python -m streamlit run dashboard.py --server.port=$PORT --server.address=0.0.0.0"

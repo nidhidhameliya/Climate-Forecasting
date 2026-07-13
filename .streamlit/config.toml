@@ -1,0 +1,10 @@
+[server]
+headless = true
+enableCORS = false
+enableWebsocketCompression = false
+
+[theme]
+base = "dark"
+
+[global]
+showWarningOnDirectExecution = false

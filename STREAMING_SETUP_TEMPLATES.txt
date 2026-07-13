@@ -1,0 +1,77 @@
+"""
+Minimal starter template for live streaming setup
+Copy and modify these files to get started with real-time predictions
+"""
+
+# requirements_streaming.txt
+APScheduler==3.11.1
+redis==5.0.0
+celery==5.3.4
+fastapi==0.104.1
+uvicorn==0.24.0
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+requests==2.31.0
+numpy==1.24.3
+torch==2.1.1
+plotly==5.17.0
+streamlit==1.28.1
+pydantic==2.5.0
+prometheus-client==0.19.0
+pyyaml==6.0.1
+
+# Docker file for ingester
+# Dockerfile.ingester
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY requirements_streaming.txt .
+RUN pip install -r requirements_streaming.txt
+
+COPY services/data_ingester.py .
+COPY config.yaml .
+
+CMD ["python", "data_ingester.py"]
+
+# Docker file for processor
+# Dockerfile.processor
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY requirements_streaming.txt .
+RUN pip install -r requirements_streaming.txt
+
+COPY services/data_processor.py .
+COPY data/processed/mean_std.json data/processed/
+COPY config.yaml .
+
+CMD ["python", "data_processor.py"]
+
+# Docker file for inference
+# Dockerfile.inference
+FROM pytorch/pytorch:2.1.1-cuda12.1-runtime-ubuntu22.04
+
+WORKDIR /app
+COPY requirements_streaming.txt .
+RUN pip install -r requirements_streaming.txt
+
+COPY services/model_inference.py .
+COPY models models/
+COPY experiments experiments/
+COPY data/processed/mean_std.json data/processed/
+COPY config.yaml .
+
+CMD ["python", "model_inference.py"]
+
+# Docker file for API
+# Dockerfile.api
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY requirements_streaming.txt .
+RUN pip install -r requirements_streaming.txt
+
+COPY api_server.py .
+
+EXPOSE 8000
+CMD ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8000"]
