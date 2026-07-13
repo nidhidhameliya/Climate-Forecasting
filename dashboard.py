@@ -1506,11 +1506,6 @@ def display_daywise_prediction_tab(split):
             with col_head2:
                 st.markdown("### Today" if days_from_today == 0 else f"### +{days_from_today}d")
 
-            st.info(
-                "Source: **Open-Meteo live forecast**. This avoids the coarse regional temperature grid "
-                "that can overestimate temperatures for hill stations like Dalhousie."
-            )
-
             st.markdown("---")
             st.subheader(f"🏙️ Weather for {selected_city}, {selected_state}")
 
