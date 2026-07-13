@@ -14,6 +14,11 @@ import yaml
 from PIL import Image
 
 from models.convlstm import ConvLSTMModel
+from future_predict import (
+    predict_specific_future_date,
+    predict_future_days as predict_future_autoregressive,
+    get_date_ranges_for_split,
+)
 
 
 LOCATION_DATA_PATH = "data/metadata/india_locations.json"
@@ -23,8 +28,6 @@ INDIA_REGION_BOUNDS = {
     "lon_min": 65.0,
     "lon_max": 100.0,
 }
-SHORT_TERM_FUTURE_DAYS = 14
-MAX_DASHBOARD_FORECAST_DAYS = 10
 WMO_WEATHER_CODES = {
     0: "Clear sky",
     1: "Mainly clear",
@@ -611,74 +614,6 @@ def display_report_tab(results):
 
 
 
-
-
-def get_date_ranges_for_split(split):
-    """Get date ranges for each split."""
-    date_ranges = {
-        "train": (datetime(2019, 1, 1), datetime(2023, 12, 31)),
-        "val": (datetime(2024, 1, 1), datetime(2024, 12, 31)),
-        "test": (datetime(2025, 1, 1), datetime(2025, 12, 31)),
-    }
-    return date_ranges.get(split, date_ranges["test"])
-
-
-def get_target_dates_for_split(split, num_samples, sequence_length=7):
-    """Get the target date represented by each sample in a split."""
-    start_date, end_date = get_date_ranges_for_split(split)
-    first_target_date = start_date + timedelta(days=sequence_length)
-    return [first_target_date + timedelta(days=idx) for idx in range(num_samples)]
-
-
-def circular_day_distance(day_a, day_b, year_length=366):
-    """Smallest circular distance between two day-of-year values."""
-    distance = abs(day_a - day_b)
-    return min(distance, year_length - distance)
-
-
-@st.cache_data
-def get_climatology_for_day(target_day_of_year, sequence_length=7, window_days=10):
-    """Average normalized target grids near a target day-of-year across all splits."""
-    matched_grids = []
-
-    for split in ["train", "val", "test"]:
-        _, y_data = load_tensor_data(split)
-        if y_data is None:
-            continue
-
-        sample_dates = get_target_dates_for_split(split, len(y_data), sequence_length=sequence_length)
-        matched_indices = [
-            idx
-            for idx, sample_date in enumerate(sample_dates)
-            if circular_day_distance(sample_date.timetuple().tm_yday, target_day_of_year) <= window_days
-        ]
-
-        if matched_indices:
-            matched_grids.append(y_data[matched_indices, 0])
-
-    if not matched_grids:
-        raise ValueError("No climatology samples found for the requested day.")
-
-    return np.concatenate(matched_grids, axis=0).mean(axis=0)
-
-
-@st.cache_data
-def get_recent_anomaly_grid(split="test", sequence_length=7, climatology_window_days=10):
-    """Estimate the recent anomaly relative to climatology in normalized space."""
-    _, y_data = load_tensor_data(split)
-    if y_data is None:
-        raise ValueError(f"Tensor data for split '{split}' could not be loaded.")
-
-    _, end_date = get_date_ranges_for_split(split)
-    baseline_grid = get_climatology_for_day(
-        end_date.timetuple().tm_yday,
-        sequence_length=sequence_length,
-        window_days=climatology_window_days,
-    )
-    recent_mean_grid = y_data[-min(sequence_length, len(y_data)) :, 0].mean(axis=0)
-    return recent_mean_grid - baseline_grid
-
-
 def get_sample_idx_from_date(target_date, split):
     """Approximate sample index from a target date."""
     X_data, _ = load_tensor_data(split)
@@ -709,138 +644,31 @@ def get_sample_idx_from_date(target_date, split):
     return approximate_idx
 
 
-def predict_future_single_date(target_date, split="test"):
-    """
-    Predict for a specific future date using auto-regressive forecasting.
-    
-    Args:
-        target_date: datetime object for the future date
-        split: which split to use for initial sequence
-    
-    Returns:
-        dict with prediction data for that date
-    """
-    from future_predict import load_model_and_stats, denormalize
-
-    _, _, mean, std = load_prediction_artifacts()
-    
-    date_ranges = {
-        "train": (datetime(2019, 1, 1), datetime(2023, 12, 31)),
-        "val": (datetime(2024, 1, 1), datetime(2024, 12, 31)),
-        "test": (datetime(2025, 1, 1), datetime(2025, 12, 31)),
-    }
-    _, end_date = date_ranges.get(split, date_ranges["test"])
-    
-    # Convert date to datetime if needed
-    if isinstance(target_date, date) and not isinstance(target_date, datetime):
-        target_date = datetime.combine(target_date, datetime.min.time())
-    
-    days_ahead = (target_date - end_date).days
-    
-    if days_ahead < 1:
-        raise ValueError(f"Target date {target_date} is not in the future")
-    
-    if days_ahead > 365:
-        raise ValueError(f"Cannot predict more than 365 days ahead")
-
-    sequence_length = 7
-    target_day_of_year = target_date.timetuple().tm_yday
-    climatology_norm = get_climatology_for_day(
-        target_day_of_year,
-        sequence_length=sequence_length,
-        window_days=10,
-    )
-    recent_anomaly_norm = get_recent_anomaly_grid(
-        split=split,
-        sequence_length=sequence_length,
-        climatology_window_days=10,
-    )
-
-    # For long horizons, use a climatology-based estimate with a decaying recent anomaly.
-    if days_ahead > SHORT_TERM_FUTURE_DAYS:
-        anomaly_scale = float(np.exp(-(days_ahead - SHORT_TERM_FUTURE_DAYS) / 30.0))
-        pred_norm_grid = climatology_norm + recent_anomaly_norm * anomaly_scale
-        pred_celsius = denormalize(pred_norm_grid, mean=mean, std=std)
-        return {
-            "prediction": pred_celsius,
-            "mean_temp": float(np.mean(pred_celsius)),
-            "min_temp": float(np.min(pred_celsius)),
-            "max_temp": float(np.max(pred_celsius)),
-            "std_temp": float(np.std(pred_celsius)),
-            "is_future": True,
-            "method": "seasonal_climatology",
-            "days_ahead": days_ahead,
-            "confidence_note": "Seasonal baseline with recent anomaly decay for long-range outlooks.",
-        }
-
-    model, _, mean, std, device = load_model_and_stats()
-
-    y_path = f"data/processed/tensors/{split}_y.npy"
-    y_data = np.load(y_path)
-    sequence = y_data[-sequence_length:].copy()
-    current_date = end_date
-
-    for day_idx in range(days_ahead):
-        current_date = current_date + timedelta(days=1)
-
-        X_input = torch.from_numpy(sequence).unsqueeze(0).float().to(device)
-
-        with torch.no_grad():
-            pred_norm = model(X_input)
-
-        pred_norm_np = pred_norm.squeeze(0).cpu().numpy()
-        target_climatology_norm = get_climatology_for_day(
-            current_date.timetuple().tm_yday,
-            sequence_length=sequence_length,
-            window_days=10,
-        )
-        blend_weight = min(0.12 + 0.04 * day_idx, 0.55)
-        pred_norm_np = pred_norm_np.squeeze(0)
-        pred_norm_np = (1.0 - blend_weight) * pred_norm_np + blend_weight * target_climatology_norm
-        pred_norm_np = pred_norm_np + recent_anomaly_norm * np.exp(-day_idx / 10.0) * 0.15
-        pred_norm_np = np.clip(pred_norm_np, -3.0, 3.0)
-
-        if current_date == target_date:
-            pred_celsius = denormalize(pred_norm_np, mean, std)
-
-            return {
-                "prediction": pred_celsius,
-                "mean_temp": float(np.mean(pred_celsius)),
-                "min_temp": float(np.min(pred_celsius)),
-                "max_temp": float(np.max(pred_celsius)),
-                "std_temp": float(np.std(pred_celsius)),
-                "is_future": True,
-                "method": "hybrid_short_term",
-                "days_ahead": days_ahead,
-                "confidence_note": "Short-range ConvLSTM forecast blended toward seasonal climatology for stability.",
-            }
-
-        sequence = np.vstack([sequence[1:], pred_norm_np[np.newaxis, np.newaxis, ...]])
-
-    raise ValueError(f"Failed to predict for {target_date}")
-
-
-
 def display_daywise_prediction_tab_legacy(split):
     """Display day-wise prediction with date picker (historical and future)."""
     st.subheader("📅 Day-Wise Climate Prediction")
     st.caption("Choose today or any of the next 10 days to predict weather for a city in India.")
 
+    india_locations = load_india_locations()
+    if india_locations is None:
+        st.error(
+            "**Location data file not found.**\n\n"
+            "The file `data/metadata/india_locations.json` is required for the city selection feature, but it's missing.\n\n"
+            "Please make sure this file is present in your project directory.",
+            icon="📍",
+        )
+        return
+
     prediction_split = "test"
     X_data, y_data = load_tensor_data(prediction_split)
     model, config, mean, std = load_prediction_artifacts()
-    india_locations = load_india_locations()
-    
+
     if X_data is None or y_data is None:
         st.warning("Tensor files not found. Run preprocessing first.")
         return
-    
+
     if model is None:
         st.warning("Model not found. Train the model first.")
-        return
-
-    if india_locations is None:
-        st.warning("India location file not found. Please make sure data/metadata/india_locations.json exists.")
         return
 
     grid_shape = (y_data.shape[-2], y_data.shape[-1])
@@ -904,7 +732,7 @@ def display_daywise_prediction_tab_legacy(split):
         return
 
     prediction_window_end = min(
-        prediction_window_start + timedelta(days=MAX_DASHBOARD_FORECAST_DAYS),
+        prediction_window_start + timedelta(days=10),
         latest_supported_date,
     )
     available_future_days = (prediction_window_end - prediction_window_start).days
@@ -952,7 +780,7 @@ def display_daywise_prediction_tab_legacy(split):
         try:
             if selected_datetime > end_date:
                 with st.spinner(f"🔮 Forecasting weather for {selected_date.strftime('%B %d, %Y')}..."):
-                    future_pred = predict_future_single_date(selected_datetime, prediction_split)
+                    future_pred = predict_specific_future_date(selected_datetime, prediction_split)
                 
                 # Better header
                 col_head1, col_head2 = st.columns([3, 1])
@@ -1349,66 +1177,6 @@ def display_daywise_prediction_tab_legacy(split):
 
 
 
-def predict_future_autoregressive(num_days, split="test"):
-    """
-    Auto-regressive prediction for multiple future days.
-    Predicts forward from the last available data point.
-    """
-    from future_predict import load_model_and_stats, get_last_sequence, denormalize
-    
-    model, config, mean, std, device = load_model_and_stats()
-    
-    # Get the last 7-day sequence to start with
-    y_path = f"data/processed/tensors/{split}_y.npy"
-    y_data = np.load(y_path)
-    
-    # Use last 7 samples as starting sequence
-    sequence = y_data[-7:].copy()  # Shape: (7, 121, 141)
-    
-    # Determine start date
-    date_ranges = {
-        "train": (datetime(2019, 1, 1), datetime(2023, 12, 31)),
-        "val": (datetime(2024, 1, 1), datetime(2024, 12, 31)),
-        "test": (datetime(2025, 1, 1), datetime(2025, 12, 31)),
-    }
-    _, end_date = date_ranges.get(split, date_ranges["test"])
-    
-    predictions_by_date = {}
-    current_date = end_date
-    
-    for day_idx in range(num_days):
-        current_date = current_date + timedelta(days=1)
-        
-        # Prepare input for model: sequence is (7, 1, 121, 141)
-        X_input = torch.from_numpy(sequence).unsqueeze(0).float().to(device)  # (1, 7, 1, 121, 141)
-        
-        # Make prediction
-        with torch.no_grad():
-            pred_norm = model(X_input)  # (1, 1, 121, 141)
-        
-        pred_norm_np = pred_norm.squeeze(0).cpu().numpy()  # (1, 121, 141)
-        
-        # Prevent exploding predictions over multiple days
-        pred_norm_np = np.clip(pred_norm_np, -4.0, 4.0)
-        pred_norm_np = pred_norm_np * 0.95
-        
-        pred_celsius = denormalize(pred_norm_np.squeeze(0), mean, std)  # (121, 141)
-        
-        # Store result
-        predictions_by_date[current_date] = {
-            "prediction": pred_celsius,
-            "mean_temp": float(np.mean(pred_celsius)),
-            "min_temp": float(np.min(pred_celsius)),
-            "max_temp": float(np.max(pred_celsius)),
-            "std_temp": float(np.std(pred_celsius)),
-        }
-        
-        # Slide window: remove oldest day, add new prediction
-        sequence = np.vstack([sequence[1:], pred_norm_np[np.newaxis, ...]])
-    
-    return predictions_by_date, end_date
-
-
 def display_future_prediction_tab(split):
     """Display future predictions (beyond training data)."""
     st.subheader("🔮 Future Climate Prediction (Auto-Regressive)")
@@ -1443,8 +1211,8 @@ def display_future_prediction_tab(split):
     if st.button("🚀 Generate Future Forecast", type="primary", key="future_predict"):
         with st.spinner(f"Generating {num_days}-day forecast..."):
             try:
-                predictions, start_date = predict_future_autoregressive(num_days, split)
-                st.success(f"✅ Forecast generated! Predicting from {start_date.strftime('%Y-%m-%d')} + {num_days} days")
+                predictions = predict_future_autoregressive(num_days, split)
+                st.success(f"✅ Forecast generated for {num_days} days!")
                 
                 # Convert to DataFrame for display
                 forecast_data = []
@@ -1602,13 +1370,18 @@ def display_future_prediction_tab(split):
 
 def display_daywise_prediction_tab(split):
     """Display city-level live weather forecasts for today and the next 10 days."""
-    india_locations = load_india_locations()
-    if india_locations is None:
-        st.warning("India location file not found. Please make sure data/metadata/india_locations.json exists.")
-        return
-
     st.subheader("📅 Day-Wise Climate Prediction")
     st.caption("Choose today or any of the next 10 days to view city-level weather for India.")
+
+    india_locations = load_india_locations()
+    if india_locations is None:
+        st.error(
+            "**Location data file not found.**\n\n"
+            "The file `data/metadata/india_locations.json` is required for the city selection feature, but it's missing.\n\n"
+            "Please make sure this file is present in your project directory.",
+            icon="📍",
+        )
+        return
 
     state_names = sorted(india_locations["states"].keys())
     default_state = "Himachal Pradesh" if "Himachal Pradesh" in state_names else state_names[0]
@@ -1661,7 +1434,7 @@ def display_daywise_prediction_tab(split):
     prediction_window_start = get_dashboard_today()
     prediction_window_end = prediction_window_start + timedelta(days=MAX_DASHBOARD_FORECAST_DAYS)
     available_future_days = (prediction_window_end - prediction_window_start).days
-
+    
     try:
         live_forecast = fetch_live_city_forecast(
             lat,
@@ -1858,27 +1631,27 @@ def main():
     display_header(split, results is not None)
 
     if results:
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(
-            ["Overview", "Spatial Analysis", "Detailed Metrics", "Report", "Predict Weather"]
+        tabs = st.tabs(
+            ["Overview", "Spatial Analysis", "Detailed Metrics", "Report", "Predict Weather", "Future Forecast"]
         )
 
-        with tab1:
+        with tabs[0]:
             display_overview_tab(results)
 
-        with tab2:
+        with tabs[1]:
             display_spatial_analysis_tab(results)
 
-        with tab3:
+        with tabs[2]:
             display_detailed_metrics_tab(results)
 
-        with tab4:
+        with tabs[3]:
             display_report_tab(results)
 
-        with tab5:
+        with tabs[4]:
             display_daywise_prediction_tab(split)
-        
-        # with tab6:
-        #     display_future_prediction_tab(split)
+
+        with tabs[5]:
+            display_future_prediction_tab(split)
 
     st.markdown("---")
     st.markdown(

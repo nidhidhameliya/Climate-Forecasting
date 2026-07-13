@@ -9,8 +9,6 @@ tqdm
 pyyaml
 matplotlib
 cdsapi
-xarray
-netCDF4
 requests
 streamlit
 plotly
