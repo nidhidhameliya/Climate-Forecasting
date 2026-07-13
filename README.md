@@ -1,4 +1,4 @@
-# 🌍 AI-Powered Climate Temperature Forecasting using ConvLSTM
+# 🌍 Climate Temperature Forecasting using ConvLSTM
 
 [![Project Status](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
