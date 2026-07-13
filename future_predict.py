@@ -85,6 +85,23 @@ def load_tensor_data(split="test"):
     return np.load(x_path), np.load(y_path)
 
 
+def get_last_sequence(config: Dict[str, Any]) -> np.ndarray:
+    """
+    Retrieves the last sequence of data needed to start auto-regressive forecasting.
+    It tries to load from test, then validation, then train splits as a fallback.
+    """
+    sequence_length = config.get("sequence_length", 7)
+
+    for split in ["test", "val", "train"]:
+        _, y_data = load_tensor_data(split)
+        if y_data is not None and len(y_data) >= sequence_length:
+            return y_data[-sequence_length:].copy()
+
+    raise FileNotFoundError(
+        "Could not find any valid data sequence files (e.g., 'test_y.npy') to start future predictions."
+    )
+
+
 def get_climatology_for_day(
     target_day_of_year: int, sequence_length: int = 7, window_days: int = 10
 ) -> np.ndarray:
@@ -151,13 +168,8 @@ def predict_future_days(
 
     model, config, mean, std, device = load_model_and_stats()
 
-    # Get the last 7-day sequence to start with
-    _, y_data = load_tensor_data(split)
-    if y_data is None:
-        raise FileNotFoundError(f"Data file not found for split '{split}'")
-
-    sequence_length = config["sequence_length"]
-    sequence = y_data[-sequence_length:].copy()
+    # Get the last sequence from the most recent available data split
+    sequence = get_last_sequence(config)
 
     # Determine start date
     _, end_date = get_date_ranges_for_split(split)
