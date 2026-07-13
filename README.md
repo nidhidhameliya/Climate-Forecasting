@@ -1,7 +1,7 @@
 [![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# AI-Powered Climate Temperature Forecasting
+# Climate Forecasting
 
 This repository contains a deep learning framework for forecasting climate temperatures using the ERA5 reanalysis dataset. The project implements a ConvLSTM model to capture spatiotemporal dependencies in climate data, providing an end-to-end pipeline from data acquisition to evaluation.
 
