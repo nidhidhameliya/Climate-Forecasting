@@ -10,7 +10,7 @@
 
 ---
 
-# 📖 AI-Powered Climate Temperature Forecasting
+# 📖 Climate Temperature Forecasting
 
 A deep learning framework for **next-day temperature forecasting** using the **ERA5 Climate Reanalysis Dataset** and **Convolutional Long Short-Term Memory (ConvLSTM)** networks.
 
