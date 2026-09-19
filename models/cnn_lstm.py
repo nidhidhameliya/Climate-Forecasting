@@ -21,24 +21,23 @@ class CNNLSTMModel(nn.Module):
             batch_first=True
         )
 
-        self.output = nn.Linear(hidden_dim, 1)
+        self.decoder = nn.Conv2d(hidden_dim, 1, kernel_size=1)
 
     def forward(self, x):
         B, T, C, H, W = x.shape
 
         spatial_feats = []
+        spatial_maps = []
 
         for t in range(T):
             feat = self.cnn(x[:, t])
-            feat = feat.mean(dim=[2,3])  # global pooling
-            spatial_feats.append(feat)
+            spatial_maps.append(feat)
+            spatial_feats.append(feat.mean(dim=[2, 3]))
 
         seq = torch.stack(spatial_feats, dim=1)
 
         lstm_out, _ = self.lstm(seq)
 
-        last = lstm_out[:, -1]
-
-        out = self.output(last)
-
-        return out.view(B, 1, 1, 1)
+        temporal_context = lstm_out[:, -1].unsqueeze(-1).unsqueeze(-1)
+        fused = spatial_maps[-1] + temporal_context
+        return self.decoder(fused)

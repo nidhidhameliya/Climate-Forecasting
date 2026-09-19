@@ -64,74 +64,82 @@ The framework automates the complete forecasting pipeline, including:
 - ERA5 climate data download
 - Data preprocessing
 - Geographic region extraction
-- Daily temporal aggregation
-- Data normalization
-- Sliding-window sequence generation
-- ConvLSTM model training
-- Temperature prediction
-- Performance evaluation
-- Visualization of prediction results
+# 📊 Results
 
----
+## Research Status
 
-# ✨ Key Features
+The repository is currently **not publication-ready**. The raw ERA5 files and
+the regenerated regional subset have finite `t2m` values, but the downstream
+daily NetCDF rebuild is still blocked by a Windows NetCDF/HDF5 file-write
+problem. Until daily files, normalization statistics, and sequence tensors are
+rebuilt in one successful run, no benchmark value should be described as a
+final paper result.
 
-- 🌍 ERA5 Climate Reanalysis Dataset support
-- 📦 Automatic climate data preprocessing
-- 🛰 Geographic region extraction
-- 📅 Daily temporal resampling
-- 📊 Sliding-window sequence generation
-- 🧠 ConvLSTM implementation
-- 🔬 CNN-LSTM implementation
-- 🤖 Transformer implementation
-- 📈 Automated training pipeline
-- 📉 Multiple evaluation metrics (RMSE, MAE, R²)
-- 📍 Spatial temperature prediction maps
-- 📂 Experiment tracking
-- 📊 Streamlit dashboard support
-- 🔮 Future temperature forecasting
-- ⚙️ YAML-based configuration system
+The authoritative reviewer audit is [research.md](research.md). It records the
+reviewer-by-reviewer status and separates verified facts from provisional
+artifacts.
 
----
+## Verified Dataset Definition
 
-# ⚙ Workflow
+- Raw ERA5 coverage: 2019-01-01 00:00 through 2025-12-31 23:00
+- Variable: hourly 2-meter air temperature (`t2m`), in Kelvin
+- Study region: 5°N to 35°N and 65°E to 100°E
+- Grid: 121 × 141 at 0.25° resolution
+- Configured split: train 2019–2023, validation 2024, test 2025
+- Input window: 7 daily fields; forecast horizon: 1 day
+- Aggregation: daily maximum, as implemented in `preprocessing/resample_time.py`
 
-```mermaid
-graph LR
+## Provisional Artifact Metrics
 
-A[ERA5 Climate Reanalysis Dataset]
---> B[Data Preprocessing]
+The following values are preserved from the previously saved checkpoint and
+test arrays. They are reproducible artifact values, not final research metrics,
+because the saved normalization artifact currently contains non-finite
+statistics and the raw-derived preprocessing chain has not completed
+successfully.
 
-B --> C[Region Selection]
+| Model | Test RMSE | Test MAE | Test R² | Test correlation |
+|-------|------------|----------|---------|------------------|
+| Persistence | 1.1277 | 0.9304 | 0.9794 | 0.9897 |
+| Saved Conv3D encoder-decoder checkpoint | 1.8823 | 1.6127 | 0.9425 | 0.9720 |
 
-C --> D[Daily Resampling]
+The class named `ConvLSTMModel` is implemented as a Conv3D encoder-decoder,
+not an LSTM-cell model. It has two 3 × 3 × 3 encoder convolutions with 32
+hidden channels, one decoder convolution, ReLU activations, and 29,441
+trainable parameters. These artifact metrics do not establish superiority over
+persistence. Independent station or operational forecast validation is not
+included.
 
-D --> E[Data Normalization]
+## Regenerating Reviewer Outputs
 
-E --> F[Sliding Window Sequence Generation]
+After the preprocessing artifacts are successfully rebuilt and verified, run:
 
-F --> G[Train / Validation / Test Split]
-
-G --> H[ConvLSTM Model]
-
-H --> I[Model Training]
-
-I --> J[Temperature Prediction]
-
-J --> K[Performance Evaluation]
-
-K --> L[Visualization]
+```bash
+python -m preprocessing.subset_region
+python -m preprocessing.split_by_year
+python -m preprocessing.resample_time
+python -m preprocessing.normalize
+python -m preprocessing.create_sequences
+python reviewer_analysis.py
+python run_baseline_experiments.py --epochs 1 --batch-size 1 --device cpu
 ```
 
----
+The analysis script writes metadata, metrics, seasonal and regional tables,
+and spatial error maps to `outputs/reviewer_revision/`. Do not update the
+metrics table above with new values until `mean_std.json`, all NumPy arrays,
+and all sequence tensors pass finite-value checks.
 
-# 💿 Dataset
+### Current Reviewer Closure
 
-The project uses the **ERA5 Climate Reanalysis Dataset**, developed by the **European Centre for Medium-Range Weather Forecasts (ECMWF)** through the **Copernicus Climate Change Service (C3S)**.
+- Reviewer 1: study region and architecture are **DONE**; dates, leakage,
+  normalization, and figures remain **PARTIAL** pending the rebuild.
+- Reviewer 2: t2m scope and metric definitions are **DONE**; baselines and
+  seasonal/regional/spatial analysis remain **PARTIAL**.
+- Reviewer 3: independent validation is **NOT DONE**; citations, literature
+  comparison, Figure 3 explanation, and conclusion moderation remain
+  **PARTIAL**.
 
-| Property | Description |
-|----------|-------------|
-| Dataset | ERA5 Climate Reanalysis |
+The full evidence and unresolved items are maintained in
+[research.md](research.md).
 | Provider | ECMWF (Copernicus C3S) |
 | Variable | 2-meter Air Temperature (`t2m`) |
 | Temporal Resolution | Hourly (Resampled to Daily) |
@@ -154,7 +162,7 @@ The overall methodology consists of:
 
 1. Download ERA5 climate data
 2. Select the target geographic region
-3. Convert hourly observations into daily averages
+3. Convert hourly observations into daily maxima (as implemented in `preprocessing/resample_time.py`)
 4. Normalize temperature values
 5. Generate sliding-window sequences
 6. Train the ConvLSTM model
@@ -162,27 +170,104 @@ The overall methodology consists of:
 8. Evaluate prediction accuracy
 9. Visualize forecasting results
 
+## Why 2-meter air temperature only?
+
+The project focuses on `t2m` because it is the single target variable used by
+the download, preprocessing, tensor-generation, model, dashboard, and
+evaluation paths. Keeping one spatially gridded target makes the current study
+a focused test of next-day spatiotemporal temperature prediction and avoids
+introducing unsupported assumptions about how humidity, pressure, wind, or
+precipitation should be encoded. This is a scope decision, not evidence that
+additional variables are unnecessary. Multivariable inputs and independent
+observations remain important future work.
+
 ---
 
 # 📊 Results
 
-The proposed ConvLSTM framework demonstrates strong predictive performance on regional temperature forecasting.
+## Current Research Status
+
+The project is currently **not publication-ready**. The raw ERA5 files,
+regional subset, and hourly train/validation/test split files have verified
+finite `t2m` values. The daily resampling stage is still blocked by a Windows
+NetCDF/HDF5 write or file-lock problem, so the normalized arrays, sequence
+tensors, benchmarks, and reviewer figures have not been regenerated from the
+raw-derived pipeline.
+
+The authoritative reviewer audit is [research.md](research.md). It separates
+verified repository facts from provisional saved artifacts and records the
+reviewer-by-reviewer closure status.
+
+## Verified Dataset Definition
+
+- Raw ERA5 coverage: 2019-01-01 00:00 through 2025-12-31 23:00
+- Variable: hourly 2-meter air temperature (`t2m`), in Kelvin
+- Study region: 5°N to 35°N and 65°E to 100°E
+- Grid: 121 × 141 at 0.25° resolution
+- Configured split: train 2019–2023, validation 2024, test 2025
+- Input window: 7 daily fields; forecast horizon: 1 day
+- Aggregation: daily maximum, as implemented in `preprocessing/resample_time.py`
+
+## Reviewer Revision Evidence
+
+The repository includes an artifact-backed audit in
+`reviewer_analysis.py`. Run it from the project root with:
+
+```bash
+python reviewer_analysis.py
+```
+
+It writes verified metadata, model metrics, seasonal and regional tables, and
+latitude/longitude spatial error maps to `outputs/reviewer_revision/`.
+
+Verified from the checked-in daily files:
+
+- Study grid: latitude 5°N to 35°N and longitude 65°E to 100°E, with a 121 ×
+      141 grid. The repository does not contain a separate scientific rationale
+      for selecting this rectangle; that rationale must be added to the paper.
+- The configured chronology is train 2019-2023, validation 2024, and test
+      2025. Final sequence counts and target dates are not reportable until the
+      daily files and normalized tensors are regenerated successfully.
+- The class named `ConvLSTMModel` is implemented as a three-layer Conv3D
+      encoder/decoder: two 3 × 3 × 3 convolutions with 32 hidden channels and a
+      one-channel 3 × 3 × 3 decoder, ReLU after the encoder convolutions, no
+      dropout, and 29,441 trainable parameters. It is not an LSTM-cell
+      implementation.
+- The sequence generator creates each split independently, so a sequence does
+      not cross a split boundary. This must be reverified after the successful
+      raw-derived rebuild.
+- The current preprocessing code uses a training-split scalar z-score and
+      replaces remaining non-finite values with zero. The saved normalization
+      statistic `296.488...` is Kelvin-scale while the current script computes
+      statistics after Kelvin-to-Celsius conversion, so the preprocessing outputs
+      should be regenerated before publication.
+
+The saved artifact checkpoint gives correlation `0.9720` and R² `0.9425`; these
+are different statistics, not an inconsistency in the recalculation. On that
+provisional test artifact, persistence is stronger than the checkpoint (RMSE
+`1.128` versus `1.882`), so no superiority claim is justified. These values
+must not be presented as final paper metrics because the current normalization
+artifact contains non-finite statistics. Independent station or operational
+forecast comparisons are not included in the repository.
+
+The checked-in checkpoint supports a reproducible next-day grid forecast
+evaluation, but the current evidence does not establish superiority over a
+simple persistence baseline.
 
 ### Evaluation Metrics
 
-| Metric | Train | Validation | Test |
-|---------|-------|------------|------|
-| RMSE (°C) | 0.0015 | 0.0018 | 0.0020 |
-| MAE (°C) | 0.0012 | 0.0015 | 0.0018 |
-| R² Score | 0.998 | 0.997 | 0.996 |
+| Model | Test RMSE | Test MAE | Test R² | Test correlation |
+|-------|------------|----------|---------|------------------|
+| Persistence | 1.1277 | 0.9304 | 0.9794 | 0.9897 |
+| Saved Conv3D encoder-decoder checkpoint | 1.8823 | 1.6127 | 0.9425 | 0.9720 |
 
 ### Highlights
 
-- ✅ Accurate next-day temperature forecasting
-- ✅ Excellent spatial feature learning
-- ✅ Stable convergence during training
-- ✅ High prediction accuracy across all datasets
-- ✅ Suitable for regional climate forecasting applications
+- ✅ Reproducible next-day spatial evaluation
+- ✅ Seasonal, regional, and grid-cell error artifacts
+- ⚠️ Persistence is stronger than the saved checkpoint on the checked-in test set
+- ⚠️ Full baseline comparisons must be rerun after preprocessing succeeds
+- ⚠️ Independent station or operational forecast validation is not yet available
 
 > **Prediction maps, evaluation graphs, and additional performance metrics are available in the `outputs/` directory.**
 >

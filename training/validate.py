@@ -14,9 +14,6 @@ def validate(model, loader):
             X = X.to(device)
             y = y.to(device)
 
-            # Fix tensor shape for ConvLSTM: (batch, lat, time, channel, lon) -> (batch, time, channel, height, width)
-            X = X.permute(0, 2, 3, 1, 4)
-
             preds = model(X.float())
             total_rmse += rmse(preds, y.float()).item()
 

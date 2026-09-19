@@ -28,3 +28,7 @@ data/*
 !data/processed/tensors/train_y.npy
 !data/processed/tensors/val_X.npy
 !data/processed/tensors/val_y.npy
+
+data/processed/tensors/*.npy
+
+data/processed/mean_std.json

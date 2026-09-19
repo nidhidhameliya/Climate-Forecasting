@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from climate_forecasting.utils.pipeline_utils import (
+from pipeline_utils import (
     load_config,
     print_run_summary,
     run_script,

@@ -4,7 +4,7 @@ import sys
 import yaml
 
 # Get project root directory
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 def run_script(script_path):

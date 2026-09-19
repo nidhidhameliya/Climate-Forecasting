@@ -25,18 +25,13 @@ def load_numpy_tensors(split):
     if not os.path.exists(y_path):
         raise FileNotFoundError(f"Missing file: {y_path}")
 
-    X = np.load(X_path)  # (B, T, H, W, 1)
-    y = np.load(y_path)  # (B, H, W, 1)
+    X = np.load(X_path)  # (B, T, C, H, W)
+    y = np.load(y_path)  # (B, C, H, W)
 
-    # -------------------------------------------------
-    # Fix X shape: (B, T, H, W, C) → (B, T, C, H, W)
-    # -------------------------------------------------
-    X = np.transpose(X, (0, 1, 4, 2, 3))
-
-    # -------------------------------------------------
-    # Fix y shape: (B, H, W, C) → (B, C, H, W)
-    # -------------------------------------------------
-    y = np.transpose(y, (0, 3, 1, 2))
+    if X.ndim != 5 or y.ndim != 4:
+        raise ValueError(
+            f"Expected X=(N,T,C,H,W) and y=(N,C,H,W), got X={X.shape}, y={y.shape}"
+        )
 
     # Convert to float32 tensors
     X = torch.tensor(X, dtype=torch.float32)

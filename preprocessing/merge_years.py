@@ -12,17 +12,17 @@ if len(files) == 0:
 
 print(f"Found {len(files)} files")
 
-# 🔥 Memory-efficient multi-file loading
-ds = xr.open_mfdataset(
-    files,
-    combine="by_coords",
-    chunks={"time": 100},   # enables dask chunking
-    parallel=True
-)
+# ERA5 downloads use ``valid_time``. Normalize that coordinate before
+# concatenating so xarray cannot align files against an unrelated time index.
+datasets = []
+for path in files:
+    dataset = xr.open_dataset(path, chunks={"valid_time": 100})
+    if "valid_time" in dataset.dims:
+        dataset = dataset.rename({"valid_time": "time"})
+    datasets.append(dataset[["t2m"]])
 
-# Fix time dimension if needed
-if "valid_time" in ds.dims:
-    ds = ds.rename({"valid_time": "time"})
+ds = xr.concat(datasets, dim="time", data_vars="minimal", coords="minimal", compat="equals")
+ds = ds.sortby("time")
 
 os.makedirs("data/interim", exist_ok=True)
 

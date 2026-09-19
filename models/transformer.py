@@ -8,28 +8,22 @@ class SpatioTemporalTransformer(nn.Module):
 
         d_model = config["model"]["hidden_dim"]
 
-        self.flatten = nn.Flatten(2)
+        self.input_projection = nn.Conv2d(1, d_model, kernel_size=1)
 
         self.transformer = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(d_model=d_model, nhead=4),
+            nn.TransformerEncoderLayer(d_model=d_model, nhead=4, batch_first=True),
             num_layers=2
         )
 
-        self.proj = nn.Linear(d_model, d_model)
-        self.output = nn.Linear(d_model, 1)
+        self.decoder = nn.Conv2d(d_model, 1, kernel_size=1)
 
     def forward(self, x):
         B, T, C, H, W = x.shape
 
-        x = x.view(B, T, -1)
-        x = self.proj(x)
-
-        x = x.permute(1,0,2)
-
-        out = self.transformer(x)
-
-        out = out[-1]
-
-        out = self.output(out)
-
-        return out.view(B,1,1,1)
+        feature_maps = [self.input_projection(x[:, t]) for t in range(T)]
+        sequence = torch.stack(
+            [feature_map.mean(dim=(2, 3)) for feature_map in feature_maps], dim=1
+        )
+        temporal_context = self.transformer(sequence)[:, -1]
+        fused = feature_maps[-1] + temporal_context.unsqueeze(-1).unsqueeze(-1)
+        return self.decoder(fused)

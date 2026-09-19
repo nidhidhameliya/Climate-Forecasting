@@ -20,10 +20,6 @@ def train_model(model, train_loader, val_loader, optimizer, training_cfg):
             X = X.to(device)
             y = y.to(device)
 
-            # Fix tensor shape for ConvLSTM: (batch, lat, time, channel, lon) -> (batch, channel, time, height, width)
-            X = X.permute(0, 2, 3, 1, 4)
-
-
             optimizer.zero_grad()
             preds = model(X.float())
             loss = loss_fn(preds, y.float())
